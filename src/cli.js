@@ -1,4 +1,6 @@
-const { init, create, integrate, build, test, help, runCommandWithFilter, runMultipleCommands } = require('./taskRunner');
+#!/usr/bin/env node
+
+const { init, create, integrate, build, test, help, runMultipleCommands } = require('./taskRunner');
 
 function parseArgs() {
     const command = process.argv[2];
@@ -19,11 +21,15 @@ function run() {
         case 'integrate':
             integrate(args[0]);
             break;
+        case 'build':
+            build();
+            break;
+        case 'test':
+            test();
+            break;
         case 'run':
-            const filter = args.find(arg => arg.startsWith('--filter='));
-            const filterValue = filter ? filter.split('=')[1] : null;
-            const commands = args.filter(arg => !arg.startsWith('--')); // Filter out options
-            runMultipleCommands(commands, filterValue);
+            const filter = args.includes('--filter') ? args[args.indexOf('--filter') + 1] : null;
+            runMultipleCommands(args.filter(arg => arg !== '--filter' && arg !== filter), filter);
             break;
         case 'help':
         default:

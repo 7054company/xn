@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const { setCache, getCache } = require('./cache');
-const repoxConfig = require('../repox.json'); // Import the configuration file
+const repoxConfig = require('../repox.json');
+const { logPerformanceMetrics } = require('./analytics'); // Import analytics functions
 
 function init() {
     console.log('Initializing the project...');
@@ -37,7 +38,10 @@ function getAllPackages() {
 function runCommand(command, dir) {
     return new Promise((resolve, reject) => {
         const fullCommand = `npm run ${command}`;
+        const startTime = Date.now(); // Start time for performance tracking
         exec(fullCommand, { cwd: dir }, (error, stdout, stderr) => {
+            const duration = Date.now() - startTime; // Duration of the command
+            logPerformanceMetrics(command, dir, duration); // Log performance metrics
             if (error) {
                 console.error(`Error executing command in ${dir}: ${error.message}`);
                 return reject(error);
@@ -55,20 +59,17 @@ async function runMultipleCommands(commands, filter) {
         return runCommandWithFilter(command, filter);
     });
 
-    // Run the commands in parallel
     await Promise.all(tasks);
 }
 
 async function runCommandWithFilter(command, filter) {
     const packages = getAllPackages();
-    
-    // Validate the command exists in the configuration
+
     if (!repoxConfig.pipeline[command]) {
         console.log(`Command '${command}' not found in repox.json.`);
         return;
     }
 
-    // Parse filter criteria
     const filteredPackages = filter ? packages.filter(pkg => pkg.includes(filter)) : packages;
 
     if (filteredPackages.length === 0) {
@@ -78,15 +79,8 @@ async function runCommandWithFilter(command, filter) {
 
     console.log(`Running command '${command}' for packages: ${filteredPackages.join(', ')}`);
 
-    // Run the command for each filtered package
     await Promise.all(filteredPackages.map(pkg => {
         const packageDir = path.join(__dirname, '../packages', pkg);
-        
-        // Read the package.json to get dependencies if needed
-        const packageJsonPath = path.join(packageDir, 'package.json');
-        const packageJson = fs.existsSync(packageJsonPath) ? require(packageJsonPath) : {};
-        
-        // Execute the command
         return runCommand(command, packageDir);
     }));
 }
@@ -96,7 +90,7 @@ async function build() {
     const packages = getAllPackages();
 
     await Promise.all(packages.map(pkg => {
-        return runCommand('npm run build', path.join(__dirname, '../packages', pkg));
+        return runCommand('build', path.join(__dirname, '../packages', pkg));
     }));
 }
 
@@ -108,7 +102,7 @@ async function test() {
         const packageJson = require(path.join(__dirname, '../packages', pkg, 'package.json'));
         const dependencies = getDependencies(packageJson);
 
-        return runCommand('npm test', path.join(__dirname, '../packages', pkg)).catch(err => {
+        return runCommand('test', path.join(__dirname, '../packages', pkg)).catch(err => {
             console.error(`Tests failed for ${pkg}: ${err.message}`);
         });
     });
@@ -118,7 +112,6 @@ async function test() {
 
 async function integrate(existingPath) {
     console.log(`Integrating project from: ${existingPath}`);
-    // Logic to integrate an existing project
 }
 
 function help() {
@@ -138,11 +131,6 @@ Commands:
 
 Filtering:
   Use the --filter option to run commands for packages that match the filter.
-  Example:
-    npx repox run build --filter=utils
-
-Configuration:
-  The commands can be defined in a repox.json file at the root of your project.
   
 Examples:
   Initialize a new project:

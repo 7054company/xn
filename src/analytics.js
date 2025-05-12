@@ -10,15 +10,7 @@ if (!fs.existsSync(metricsDir)) {
 function logPerformanceMetrics(command, dir, duration) {
     const metricsFile = path.join(metricsDir, 'performance.log');
     const logEntry = `${new Date().toISOString()} - Command: ${command} | Directory: ${dir} | Duration: ${duration}ms\n`;
-
-    // Debug output to verify this part is being executed
-    console.log(`Logging performance metrics: ${logEntry}`);
-
-    fs.appendFileSync(metricsFile, logEntry, (err) => {
-        if (err) {
-            console.error('Error writing to performance log file:', err);
-        }
-    });
+    fs.appendFileSync(metricsFile, logEntry);
 }
 
 function logError(error) {
